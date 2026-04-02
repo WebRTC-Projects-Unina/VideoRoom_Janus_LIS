@@ -6,7 +6,7 @@
 </p>
 
 
-VocaLIS è un'applicazione web che permette la videochiamata tra utenti e la traduzione in tempo reale della Lingua dei Segni Italiana (LIS) in testo. L'applicazione è sviluppata interamente lato client in **React**. Per la gestione delle sessioni WebRTC e lo smistamento dei flussi multimediali l'applicazione fa affidamento sul gateway **Janus**, utilizzato nella sua istanza pubblica di test. Per il riconoscimento dei segni vengono utilizzato motori **WASM** di **TensorFlow.js**.
+VocaLIS è un'applicazione web che permette la videochiamata tra utenti e la traduzione in tempo reale della Lingua dei Segni (LIS) in testo. L'applicazione è sviluppata interamente lato client in **React**. Per la gestione delle sessioni WebRTC e lo smistamento dei flussi multimediali l'applicazione fa affidamento sul gateway **Janus**, utilizzato nella sua istanza pubblica di test. Per il riconoscimento dei segni vengono utilizzato motori **WASM** di **TensorFlow.js**.
 
 ---
 1. [**Caratteristiche Principali**](#caratteristiche-principali)
@@ -23,7 +23,7 @@ VocaLIS è un'applicazione web che permette la videochiamata tra utenti e la tra
 ## Caratteristiche principali
 - Videoconferenza in tempo reale tra più utenti tramite architettura SFU (Selective Forwarding Unit) con Janus Gateway
 - Chat multi-utente in tempo reale tramite DataChannel WebRTC
-- Traduzione in tempo reale della Lingua dei Segni Italiana (LIS) in testo tramite TensorFlow.js e WebAssembly
+- Traduzione in tempo reale della Lingua dei Segni (LIS) in testo tramite TensorFlow.js e WebAssembly
 - Interfaccia utente moderna e reattiva sviluppata in React
 
 ---
