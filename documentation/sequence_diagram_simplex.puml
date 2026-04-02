@@ -1,0 +1,153 @@
+@startuml LIS_Connect_Sequence_Simplex
+
+title LIS Connect – Sequence Diagram (Leggibile)
+
+skinparam sequenceMessageAlign center
+skinparam noteFontSize 11
+
+actor "Utente A" as UA
+participant "Browser A\n(HomePage → VideoRoom)" as BrA
+participant "janus.js A\n(libreria WebRTC)" as JA
+participant "Janus Server\n(smistatore SFU)" as SRV
+participant "janus.js B\n(libreria WebRTC)" as JB
+participant "Browser B\n(HomePage → VideoRoom)" as BrB
+actor "Utente B" as UB
+
+' ═══════════════════════════════════════════════════════════════════
+== 1. Utente A entra nell'applicazione ==
+' ═══════════════════════════════════════════════════════════════════
+
+UA -> BrA : Inserisce nome utente e numero stanza
+BrA -> JA : Janus.init()\n[avvia la libreria WebRTC]
+JA -> SRV : Connessione WebSocket
+SRV --> JA : Sessione creata
+JA --> BrA : success() → libreria pronta
+
+BrA -> JA : janus.attach(plugin: videoroom)\n[aggancia il plugin]
+JA --> BrA : success(pluginHandle)\n[handleID per inviare/ricevere comandi]
+
+BrA -> SRV : request: "join", room: stanza, ptype: "publisher"\n[richiesta di entrare come mittente]
+
+alt La stanza non esiste ancora sul server
+    SRV --> BrA : error_code: 426\n[stanza non trovata]
+    BrA -> SRV : request: "create", room: stanza\n[la stanza viene creata]
+    SRV --> BrA : videoroom: "created"
+    BrA -> SRV : request: "join", room: stanza, ptype: "publisher"\n[riprova l'ingresso nella stanza appena creata]
+end
+
+SRV --> BrA : videoroom: "joined"
+
+' ═══════════════════════════════════════════════════════════════════
+== 2. Negoziazione webcam e trasmissione video di A (SDP Offer/Answer) ==
+' ═══════════════════════════════════════════════════════════════════
+
+BrA -> JA : createOffer(tracks: [audio, video, data], capture: true )\n["setLocalOffer"]
+note over BrA, JA : capture: true → getUserMedia() per webcam e microfono
+JA -> UA : Popup consenso webcam e microfono
+UA --> JA : Utente accetta
+JA --> BrA : success(jsepOffer)\n[offerta locale SDP settata correttamente]
+
+BrA -> SRV : request: "configure", jsep: SDP Offer\n[invia l'offerta al server]
+SRV --> BrA : jsep: SDP Answer\n[il server risponde con i propri parametri (codec, ICE, ecc.)]
+BrA -> JA : handleRemoteJsep(SDP Answer)\n["setRemoteDescription"]
+
+note over BrA, SRV : PeerConnection Publisher A stabilita\nA sta trasmettendo audio e video al server
+
+' ═══════════════════════════════════════════════════════════════════
+== 3. Riconoscimento segni LIS in tempo reale (loop continuo) ==
+' ═══════════════════════════════════════════════════════════════════
+
+BrA -> BrA : MediaPipe + Camera.start()\n[avvia il rilevamento della mano sulla webcam locale]
+BrA -> BrA : Carica modello TF.js su Web Worker\n[il motore AI gira in background per non bloccare l'interfaccia]
+
+loop Per ogni fotogramma della webcam (finché l'AI è attiva)
+    BrA -> BrA : [MediaPipe] Estrae 21 landmark della mano\ne li normalizza in 42 coordinate (x, y)
+    BrA -> BrA : postMessage(42 landmark)\n→ [Web Worker] inferenza WASM
+    BrA -> BrA : postMessage({ prediction: "CIAO" })\n→ la parola riconosciuta appare nella chat
+end
+
+' ═══════════════════════════════════════════════════════════════════
+== 4. Utente B si collega alla stessa stanza ==
+' ═══════════════════════════════════════════════════════════════════
+
+UB -> BrB : Inserisce nome utente e stesso numero di stanza
+BrB -> JB : Janus.init() → WebSocket → Sessione creata
+JB --> BrB : success() → janus.attach(plugin: videoroom)
+
+BrB -> SRV : request: "join", room: stanza, ptype: "publisher", display: "B"
+SRV --> BrB : videoroom: "joined"\n(myId: id_B, publishers: [{ id: id_A, display: "A" }])
+note over BrB : myId: id_B → identificativo univoco assegnato da Janus a B\npublishers[] → lista dei mittenti già attivi nella stanza:\nB sa subito che A è presente e può iscriversi al suo feed
+
+
+BrB -> JB : createOffer(tracks: [audio, video, data])
+JB -> UB : Popup consenso webcam e microfono
+UB --> JB : Utente accetta
+JB --> BrB : success(jsepOffer)
+
+BrB -> SRV : request: "configure", jsep: SDP di B
+SRV --> BrB : jsep: SDP Answer per B
+BrB -> JB : handleRemoteJsep(SDP Answer)
+
+note over SRV, BrB : PeerConnection Publisher B stabilita\nB sta trasmettendo audio e video al server
+
+' ═══════════════════════════════════════════════════════════════════
+== 5. B si iscrive al video di A (Subscriber) ==
+' ═══════════════════════════════════════════════════════════════════
+
+note over BrB : B ha visto A nella lista publishers notificata dal server:\ne si iscrive automaticamente al suo feed
+
+BrB -> SRV : janus.attach(subscriber) + request: "join", room: stanza\nstreams: [{ feed: id_A }]\n[apre un secondo canale come subscriber per ricevere il video di A]
+SRV --> BrB : jsep: SDP Offer (feed di A)\n[il server descrive il flusso video di A]
+BrB -> JB : createAnswer(tracks: [data])\n[accetta audio/video automaticamente, aggiunge dati]
+note over BrB, JB : la funzione chiama internamente setRemoteDescription() con l'offerta SDP del server e setLocalDescription() con la risposta SDP di B
+JB --> BrB : success(jsepAnswer)
+BrB -> SRV : request: "start", room: stanza, jsep: SDP B\n[conferma: inizia a ricevere il video di A]
+SRV --> BrB : onremotetrack(track A)\n[handler di B che gestisce l'arrivo del flusso video di A]
+BrB -> UB : Il video di A compare sullo schermo\ncon il nome utente inserito da A sotto il frame video
+
+' ═══════════════════════════════════════════════════════════════════
+== 6. Il server notifica A: è arrivato B ==
+' ═══════════════════════════════════════════════════════════════════
+
+SRV --> BrA : evento publishers: [{ id_B, display: "B" }]\n[il server avvisa A che c'è un nuovo partecipante]
+BrA -> SRV : janus.attach(subscriber) + request: "join", room: stanza\nstreams: [{ feed: id_B }]
+SRV --> BrA : jsep: SDP Offer (feed di B)
+BrA -> JA : createAnswer(tracks: [data])
+JA --> BrA : success(jsepAnswer)
+note over BrA, JA : A si è iscritto al feed di B
+SRV --> BrA : onremotetrack(track B)
+BrA -> UA : Il video di B compare sullo schermo\ncon il nome utente inserito da B sotto il frame video
+
+note over BrA, BrB : Videochiamata full-duplex attiva: A ↔ SFU ↔ B\naudio + video + DataChannel bidirezionale
+
+' ═══════════════════════════════════════════════════════════════════
+== 7a. Chat: messaggio scritto a tastiera ==
+' ═══════════════════════════════════════════════════════════════════
+
+UA -> BrA : Scrive "Ciao B!" e preme Invio o click su "Invia"
+BrA -> SRV : sfuPlugin.data({ user:"A", message:"Ciao B!" })\n[inviato sul DataChannel]
+SRV --> BrB : ondata({ user:"A", message:"Ciao B!" })
+BrB -> UB : Nella chat di B compare "A: Ciao B!"
+
+' ═══════════════════════════════════════════════════════════════════
+== 7b. Chat: messaggio generato dai segni LIS ==
+' ═══════════════════════════════════════════════════════════════════
+
+BrA -> BrA : [MediaPipe] Rileva il segno "GRAZIE"\n→ postMessage(landmark) → Web Worker
+BrA -> BrA : [Web Worker] Restituisce prediction:"GRAZIE"\n→ la parola appare nel campo testo della chat
+UA -> BrA : Premi Invio o click su "Invia"
+BrA -> SRV : sfuPlugin.data({ user:"A", message:"GRAZIE" })
+SRV --> BrB : ondata({ user:"A", message:"GRAZIE" })
+BrB -> UB : Nella chat di B compare "A: GRAZIE"
+
+' ═══════════════════════════════════════════════════════════════════
+== 8. Utente A lascia la stanza ==
+' ═══════════════════════════════════════════════════════════════════
+
+UA -> BrA : Clicca "Esci"
+BrA -> SRV : janusRef.destroy()\n[chiude tutte le PeerConnection e la sessione]
+SRV --> BrB : evento: leaving(id_A)\n[il server avvisa B che A ha abbandonato]
+BrB -> UB : Il video di A scompare dalla griglia
+BrA -> UA : L'interfaccia torna alla schermata iniziale
+
+@enduml

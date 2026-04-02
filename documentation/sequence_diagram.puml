@@ -1,0 +1,157 @@
+@startuml LIS_Connect_Sequence
+
+title LIS Connect – Sequence Diagram
+
+actor "Utente A" as UA
+participant "HomePage A" as HPA
+participant "App.js A" as AppA
+participant "VideoRoom A" as VRA
+participant "janus.js A" as JJSA
+participant "Janus Server (SFU)" as JS
+participant "LocalVideo" as LV
+participant "Web Worker (AI)" as WW
+participant "RemoteVideoGrid A" as RVGA
+participant "janus.js B" as JJSB
+participant "VideoRoom B" as VRB
+participant "RemoteVideoGrid B" as RVGB
+participant "App.js B" as AppB
+participant "HomePage B" as HPB
+actor "Utente B" as UB
+
+== Setup Sessione (Utente A) ==
+
+UA -> HPA : Inserisce username "A" e roomID
+HPA -> AppA : onJoin({ username, roomID })
+AppA -> VRA : Renderizza VideoRoom (props)
+
+VRA -> JJSA : Janus.init()
+JJSA -> JS : Connessione WebSocket
+JS --> JJSA : Sessione creata
+JJSA --> VRA : callback success()
+
+VRA -> JJSA : janus.attach(plugin: videoroom)
+JJSA --> VRA : success(pluginHandle)
+
+== Join Stanza (Utente A) ==
+
+VRA -> JS : send { request: "join", ptype: "publisher", display: "A" }
+
+alt Stanza non esiste (error_code 426)
+    JS --> VRA : error_code: 426
+    VRA -> JS : send { request: "create", room, bitrate, fir_freq }
+    JS --> VRA : videoroom: "created"
+    VRA -> JS : send { request: "join", ptype: "publisher" }
+end
+
+JS --> VRA : videoroom: "joined" (myId: A, publishers: [])
+
+== Negoziazione Publisher A (Offer/Answer) ==
+
+VRA -> JJSA : createOffer({ tracks: [audio, video, data], capture: true })
+JJSA -> UA : Browser popup consenso webcam/microfono
+UA --> JJSA : Accetta
+JJSA --> VRA : success(jsepOffer)
+VRA -> JS : send { request: "configure", jsep: offer A }
+JS --> VRA : jsep: answer A
+VRA -> JJSA : handleRemoteJsep(answer A)
+
+note over VRA, JS : PeerConnection Publisher A stabilita (ICE + DTLS)
+
+== AI Hand Tracking Locale (loop) ==
+
+VRA -> LV : Renderizza LocalVideo (aiEnabled)
+LV -> LV : Inizializza MediaPipe + Camera\n(camera.start() → getUserMedia)
+LV -> WW : Carica modello TF.js (WASM backend)
+
+loop Ogni frame webcam
+    LV -> WW : postMessage(42 landmark normalizzati)
+    WW --> LV : postMessage({ prediction: "CIAO" })
+    LV -> VRA : setCurrentSign("CIAO")
+    VRA -> VRA : ChatBox accumula la predizione
+end
+
+== Utente B si connette alla stessa stanza ==
+
+UB -> HPB : Inserisce username "B" e stesso roomID
+HPB -> AppB : onJoin({ username, roomID })
+AppB -> VRB : Renderizza VideoRoom (props)
+
+VRB -> JJSB : Janus.init()
+JJSB -> JS : Connessione WebSocket (wss://)
+JS --> JJSB : Sessione creata
+JJSB --> VRB : callback success()
+
+VRB -> JJSB : janus.attach(plugin: videoroom)
+JJSB --> VRB : success(pluginHandle)
+
+VRB -> JS : send { request: "join", ptype: "publisher", display: "B" }
+JS --> VRB : videoroom: "joined" (myId: B, publishers: [{ id: A, display: "A" }])
+
+== Negoziazione Publisher B (Offer/Answer) ==
+
+VRB -> JJSB : createOffer({ tracks: [audio, video, data], capture: true })
+JJSB -> UB : Browser popup consenso webcam/microfono
+UB --> JJSB : Accetta
+JJSB --> VRB : success(jsepOffer)
+VRB -> JS : send { request: "configure", jsep: offer B }
+JS --> VRB : jsep: answer B
+VRB -> JJSB : handleRemoteJsep(answer B)
+
+note over JS, VRB : PeerConnection Publisher B stabilita (ICE + DTLS)
+
+== B si iscrive al feed di A ==
+
+VRB -> JS : attach subscriber + join { streams: [{ feed: id_A }] }
+JS --> VRB : jsep offer (feed di A)
+VRB -> JJSB : createAnswer({ tracks: [data] })
+JJSB --> VRB : success(jsepAnswer)
+VRB -> JS : send { request: "start", jsep: answer }
+JS --> VRB : onremotetrack(track A, added=true)
+VRB -> RVGB : setRemoteStreams({ id_A: { stream, display: "A" } })
+RVGB -> UB : Mostra video + nome "A"
+
+== A riceve notifica dell'arrivo di B e si iscrive ==
+
+JS --> VRA : evento publishers [{ id: B, display: "B" }]
+VRA -> JS : attach subscriber + join { streams: [{ feed: id_B }] }
+JS --> VRA : jsep offer (feed di B)
+VRA -> JJSA : createAnswer({ tracks: [data] })
+JJSA --> VRA : success(jsepAnswer)
+VRA -> JS : send { request: "start", jsep: answer }
+JS --> VRA : onremotetrack(track B, added=true)
+VRA -> RVGA : setRemoteStreams({ id_B: { stream, display: "B" } })
+RVGA -> UA : Mostra video + nome "B"
+
+note over VRA, VRB : Connessione full-duplex attiva: A <-> SFU <-> B
+
+== Chat via DataChannel (messaggio manuale) ==
+
+UA -> VRA : Invia messaggio "Ciao B!" (tastiera)
+VRA -> JS : sfuPluginRef.data({ user: "A", message: "Ciao B!" })
+JS --> VRB : ondata({ user: "A", message: "Ciao B!" })
+VRB -> UB : ChatBox mostra "A: Ciao B!"
+
+== Chat via DataChannel (messaggio con AI LIS) ==
+
+note over LV, WW : Il loop AI è già attivo
+LV -> WW : postMessage(landmark segno "GRAZIE")
+WW --> LV : postMessage({ prediction: "GRAZIE" })
+LV -> VRA : setCurrentSign("GRAZIE")
+VRA -> VRA : ChatBox accumula → draftMessage = "GRAZIE"
+UA -> VRA : Premi Invio (o click "Invia")
+VRA -> JS : sfuPluginRef.data({ user: "A", message: "GRAZIE" })
+JS --> VRB : ondata({ user: "A", message: "GRAZIE" })
+VRB -> UB : ChatBox mostra "A: GRAZIE"
+
+== Uscita di A dalla Stanza ==
+
+UA -> VRA : Click "Esci"
+VRA -> JS : janusRef.destroy()
+JS --> VRB : evento leaving (id_A)
+VRB -> RVGB : setRemoteStreams → rimuove id_A
+RVGB -> UB : Rimuove video di A dalla griglia
+JS --> VRA : PeerConnection chiuse
+VRA -> AppA : onLeave()
+AppA -> HPA : Renderizza HomePage
+
+@enduml
