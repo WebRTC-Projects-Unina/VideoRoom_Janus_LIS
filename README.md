@@ -126,17 +126,7 @@ La struttura del progetto VocaLIS è organizzata in due cartelle principali: `li
       App.js
       index.js
     config-overrides.js             
-    package.json
-  /documentation (ANDRA' RIMOSSA ALLA FINE)
-    README.md                           
-    progetto.md                     
-    implementazione_progetto.md
-    janus_implementazione.md
-    utilizzo_wasm.md
-    sequence_diagram.puml           
-    sequence_diagram_simplex.puml   
-    sequence_diagram_progetto.pdf   
-  Sign2Text_Colab_Trainer.ipynb     
+    package.json    
 ```
 
 # Struttura dell'Applicazione
