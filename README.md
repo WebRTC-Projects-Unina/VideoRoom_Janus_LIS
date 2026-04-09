@@ -71,14 +71,14 @@ Per avviare il progetto, segui questi passaggi:
 
 ### 1. **Clone della repository**
 ```
-git clone https://github.com/WebRTC-Projects-Unina/CAMBIARE CARTELLA "progetto" in *titolo*
+git clone https://github.com/WebRTC-Projects-Unina/VideoRoom_Janus_LIS
 ```
 
 ### 2. **Installare le Dipendenze**
  
-Accedi alla cartella  *titolo* e installa le dipendenze necessarie utilizzando **npm**
+Accedi alla cartella "lis-app" e installa le dipendenze necessarie utilizzando **npm**
 ```
-cd *titolo*/lis-app
+cd VideoRoom_Janus_LIS/lis-app
 npm install
 ```
 
@@ -98,7 +98,7 @@ Apri il browser e vai all'indirizzo: http://localhost:3000
 # Outline del Progetto
 La struttura del progetto VocaLIS è organizzata in due cartelle principali: `lis-app`.
 ```
-/*CAMBIARE CARTELLA "progetto" in *titolo*/
+/VideoRoom_Janus_LIS
   /lis-app                          
     /public
       /assets
