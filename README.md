@@ -142,7 +142,7 @@ Funge da entry-point dinamico. Mantiene lo stato della connessione corrente (`se
 ### `HomePage.js`
 Questo componente rappresenta il primo entry-point per l'utente (Landing Page). A differenza di un form tradizionale che ricarica la pagina, `HomePage.js` è un componente che implementa una form dentro la quale vengono inseriti i dati per la sessione (nome utente e ID stanza).
 
-Il componente si appoggia ad hook `useState` per tracciare i dati in tempo reale, mantenendo due token fondamentali:
+Il componente si appoggia ad un hook `useState` per tracciare i dati in tempo reale, mantenendo due token fondamentali:
 - **`username`:** L'identificativo del client, che verrà poi allegato al feed remoto e iniettato nei payload della ChatBox P2P.
 - **`room`:** L'identificativo numerico della stanza virtuale da interrogare nativamente sul Gateway Janus.
 
