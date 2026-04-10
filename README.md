@@ -10,7 +10,7 @@ VocaLIS è un'applicazione web che permette la videochiamata tra utenti e la tra
 
 ---
 1. [**Caratteristiche Principali**](#caratteristiche-principali)
-2. [**Interfaccia dell'app**](#interfaccia-app)
+2. [**Interfaccia dell'app**](#interfaccia-dellapp)
 3. [**Tecnologie Utilizzate**](#tecnologie-utilizzate)
 4. [**Setup del Progetto**](#setup-del-progetto)
 5. [**Outline del Progetto**](#outline-del-progetto)
