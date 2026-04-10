@@ -218,7 +218,7 @@ Questo permette di separare il rendering della pagina dai pesanti calcoli della 
 ### `RemoteVideoGrid.js`
 Questo componente è incaricato di visualizzare tutti i partecipanti connessi alla stanza in qualità di *Subscriber*. Poiché i peer possono entrare e uscire in qualsiasi momento asincrono, la griglia video non è un layout statico ma puramente reattivo.
 
-**Mapping delle stream remote**
+**Mapping delle stream remote:**
 Il componente riceve in ingresso la prop `remoteStreams` da `VideoRoom.js`. Si tratta di un oggetto di stato le cui chiavi sono gli identificativi numerici generati da Janus e i valori sono **oggetti** con due campi:
 - `stream`: l'istanza `MediaStream` con i track audio/video del partecipante
 - `display`: il nome utente scelto dal partecipante nella `HomePage`
