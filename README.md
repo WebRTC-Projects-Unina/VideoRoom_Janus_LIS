@@ -268,7 +268,7 @@ Questo componente gestisce la chat multi-utente trasmessa in P2P tramite DataCha
 
 **L'Accumulatore Reattivo (`useEffect`):**
 Invece di inviare i messaggi frammentati o ripetitivi in rete (spammando la chat comune), il componente deposita temporaneamente le traduzioni nello stato locale `draftMessage`. In ascolto sugli aggiornamenti della prop `currentSign`, l'hook `useEffect` fa da debouncer:
-Aggancia l'ultima predizione scartando i duplicati immediati (appoggiandosi alla cache sincrona `lastProcessedRef.current`) e concatena i risultati nel campo di testo. Implementa inoltre una logica di formattazione che valuta se apporre uno spazio (in caso di parole intere riconosciute) o fondere la stringa nel caso si stia scrivendo una parola lettera per lettera:
+aggancia l'ultima predizione scartando i duplicati immediati (appoggiandosi alla cache sincrona `lastProcessedRef.current`) e concatena i risultati nel campo di testo. Implementa inoltre una logica di formattazione che valuta se apporre uno spazio (in caso di parole intere riconosciute) o fondere la stringa nel caso si stia scrivendo una parola lettera per lettera:
 
 ```javascript
   useEffect(() => {
