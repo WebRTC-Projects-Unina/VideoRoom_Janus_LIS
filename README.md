@@ -47,7 +47,7 @@ VocaLIS è un'applicazione web che permette la videochiamata tra utenti e la tra
 ## Modalità di utilizzo
 ### Video Tutorial
 <div style="display: flex; gap: 10px;">
-  <video src="https://github.com/WebRTC-Projects-Unina/VideoRoom_Janus_LIS/blob/main/lis-app/public/assets/vocalis-video-presentazione-applicazione.mp4" width="600" controls loop autoplay muted></video>
+  <video src="lis-app/public/assets/vocalis-video-presentazione-applicazione.mp4" width="600" controls loop autoplay></video>
 </div>
 
 ---
